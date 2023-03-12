@@ -30,8 +30,20 @@ int printf(char *format, ...)
 	char text[CONSOLE_MAXLEN];
 
 	vssprintf(text, CONSOLE_MAXLEN, &format);
-
+	
 	return u_stdout->print(text);
+}
+
+int PRINTF(char *text)
+{
+	char text2[CONSOLE_MAXLEN];
+	vssprintf(text2, CONSOLE_MAXLEN, &text);
+	for(int i=0;i<strlen(text2);i++){
+		if(text2[i]>=97 && text2[i]<=122){
+			text2[i]=text2[i]-32;
+		}
+	}
+	return u_stdout->print(text2);
 }
 
 /*! Formated output to error console */
