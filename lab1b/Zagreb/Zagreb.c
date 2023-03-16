@@ -13,6 +13,7 @@ void Zagreb()
     getcwd(path, MAX_BUF);
     cut(path);
     printf("%s\n", strcat(path,"/Zagreb-program"));
+    lab1z();
 
 
     Britanski();

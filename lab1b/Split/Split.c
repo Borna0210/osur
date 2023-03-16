@@ -13,6 +13,7 @@ void Split()
   getcwd(path, MAX_BUF);
   cut(path);
   printf("%s\n", strcat(path, "/Split-program"));
+  lab1z();
 
   Dioklecijanova();
 }

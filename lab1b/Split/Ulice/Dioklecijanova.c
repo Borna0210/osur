@@ -12,6 +12,7 @@ void Dioklecijanova(){
     getcwd(path, MAX_BUF);
     cut(path);
     printf("%s\n", strcat(path,"/Dioklecijanova-program"));
+    lab1z();
     chdir("../..");
       
 }

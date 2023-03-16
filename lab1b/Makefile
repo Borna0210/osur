@@ -6,7 +6,7 @@ PROGRAM = program
 CFLAGS = -Wall -I$(POCETNI_DIREKTORIJ)/include
 
 OBJEKTI = main.o
-MODULI = Split/mod-Split.o Zagreb/mod-Zagreb.o
+MODULI = Split/mod-Split.o Zagreb/mod-Zagreb.o lab1z/mod-lab1z.o
 
 all: $(PROGRAM)
 
@@ -23,6 +23,7 @@ $(MODULI):
 brisi:
 	$(MAKE) -C Zagreb brisi
 	$(MAKE) -C Split brisi
+	$(MAKE) -C lab1z brisi
 	rm -f $(OBJEKTI) $(PROGRAM)
 
 .PHONY: pokreni
