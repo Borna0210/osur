@@ -32,6 +32,7 @@ arch_startup:
 	/* starting status register - EFLAGS register */
 	pushl	$0
 	popf
+	call premjesti
 
 	/* set up GDT, IDT */
 	call	arch_descriptors_init

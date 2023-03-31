@@ -4,8 +4,9 @@
 
 ENTRY(arch_startup)
 
+
 SECTIONS {
-	.code LOAD_ADDR :
+	.code 0x200000 :
 	{
 		kernel_code_addr = .;
 
@@ -14,17 +15,28 @@ SECTIONS {
 
 		*( .text* )
 	}
-	.data :
+	.rodata 0x300000 :
+	{
+		kernel_rodata_addr = .;
+
+		/* read only data (constants) */
+		*( .rodata* )
+	}
+	.data 0x400000  :
 	{
 		kernel_data_addr = .;
 
 		/* read only data (constants), initialized global variables */
-		* ( .rodata* .data* )
-	}
-	.bss :
-	{
-		*( .bss* COMMON* )
+		* ( .data* )
+		. = ALIGN (4096);
 
+		*( .bss* )
+	}
+	. = ALIGN (4096);
+	stack_top = .;
+	.stack :
+	{
+		. = . + STACK_SIZE;
 		. = ALIGN (4096);
 	}
 
