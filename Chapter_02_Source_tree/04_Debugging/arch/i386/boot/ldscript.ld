@@ -6,17 +6,21 @@ ENTRY(arch_startup)
 
 STACK_ADDR    = 0x800000-STACK_SIZE;
 SECTIONS {
-	.code 0x200000 : AT(0x20000)
+	.code 0x0:
 	{
 		kernel_code_addr = .;
 
 		/* instructions */
 		*?/boot/startup.asm.o ( .text* )
+		*?/boot/premjesti.o ( .text* )
 
+	}
+	.instrukcije 0x200000 : AT(0x20000){
+		kernel_instrukcije_addr = .;
 		*( .text* )
 	}
 
-	size_i = SIZEOF(.code);
+	size_i = SIZEOF(.instrukcije);
 	.rodata 0x300000  : AT(0x30000)
 	{
 		kernel_rodata_addr = .;

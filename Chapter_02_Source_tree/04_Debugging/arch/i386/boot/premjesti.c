@@ -2,11 +2,6 @@
 #include <lib/string.h>
 #include <api/stdio.h>
 
-extern unsigned int kernel_code_addr;
-extern unsigned int kernel_rodata_addr;
-extern unsigned int kernel_data_addr;
-extern unsigned int kernel_end_addr;
-extern unsigned int stack_top;
 
 void premjesti_helper()
 {
