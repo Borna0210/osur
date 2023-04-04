@@ -4,9 +4,9 @@
 
 ENTRY(arch_startup)
 
-
+STACK_ADDR    = 0x800000-STACK_SIZE;
 SECTIONS {
-	.code 0x200000 :
+	.code 0x200000 : AT(0x20000)
 	{
 		kernel_code_addr = .;
 
@@ -15,14 +15,17 @@ SECTIONS {
 
 		*( .text* )
 	}
-	.rodata 0x300000 :
+
+	size_i = SIZEOF(.code);
+	.rodata 0x300000  : AT(0x30000)
 	{
 		kernel_rodata_addr = .;
 
 		/* read only data (constants) */
 		*( .rodata* )
 	}
-	.data 0x400000  :
+	size_r = SIZEOF(.rodata);
+	.data 0x400000  : AT(0x40000)
 	{
 		kernel_data_addr = .;
 
@@ -32,12 +35,13 @@ SECTIONS {
 
 		*( .bss* )
 	}
-	. = ALIGN (4096);
-	stack_top = .;
-	.stack :
+	size_data = SIZEOF(.data);
+	/* For stack, two options are shown here */
+	/* 1. treat system_stack as a variable in special section and
+	      mark it as such in kernel/startup.c */
+	.stack_segment STACK_ADDR : AT (0x80000)
 	{
-		. = . + STACK_SIZE;
-		. = ALIGN (4096);
+		* ( .stack_section* )
 	}
 
 	/*
