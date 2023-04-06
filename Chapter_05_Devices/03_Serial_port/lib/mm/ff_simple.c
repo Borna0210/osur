@@ -12,7 +12,7 @@
  * \param mem_segm Memory pool start address
  * \param size Memory pool size
  * \return memory pool descriptor
-*/
+ */
 void *ffs_init(void *mem_segm, size_t size)
 {
 	size_t start, end;
@@ -22,10 +22,10 @@ void *ffs_init(void *mem_segm, size_t size)
 	ASSERT(mem_segm && size > sizeof(ffs_hdr_t) * 2);
 
 	/* align all on 'size_t' (if already not aligned) */
-	start = (size_t) mem_segm;
+	start = (size_t)mem_segm;
 	end = start + size;
 	ALIGN_FW(start);
-	mpool = (void *) start;		/* place mm descriptor here */
+	mpool = (void *)start; /* place mm descriptor here */
 	start += sizeof(ffs_mpool_t);
 	ALIGN(end);
 
@@ -34,7 +34,7 @@ void *ffs_init(void *mem_segm, size_t size)
 	if (end - start < 2 * HEADER_SIZE)
 		return NULL;
 
-	border = (ffs_hdr_t *) start;
+	border = (ffs_hdr_t *)start;
 	border->size = sizeof(size_t);
 	MARK_USED(border);
 
@@ -88,7 +88,8 @@ void *ffs_alloc(ffs_mpool_t *mpool, size_t size)
 		chunk = GET_AFTER(iter);
 		chunk->size = size;
 	}
-	else { /* give whole chunk */
+	else
+	{ /* give whole chunk */
 		chunk = iter;
 
 		/* remove it from free list */
@@ -98,7 +99,7 @@ void *ffs_alloc(ffs_mpool_t *mpool, size_t size)
 	MARK_USED(chunk);
 	CLONE_SIZE_TO_TAIL(chunk);
 
-	return ((void *) chunk) + sizeof(size_t);
+	return ((void *)chunk) + sizeof(size_t);
 }
 
 /*!
@@ -119,21 +120,43 @@ int ffs_free(ffs_mpool_t *mpool, void *chunk_to_be_freed)
 	MARK_FREE(chunk); /* mark it as free */
 
 	/* join with left? */
-	before = ((void *) chunk) - sizeof(size_t);
+	before = ((void *)chunk) - sizeof(size_t);
 	if (CHECK_FREE(before))
 	{
-		before = GET_HDR(before);
-		ffs_remove_chunk(mpool, before);
-		before->size += chunk->size; /* join */
-		chunk = before;
+		if (before->size <= 1024 && chunk->size <= 1024)
+		{
+			if (chunk->size + before->size <= 1024)
+			{
+				before = GET_HDR(before);
+				printf("SPOJENO S LIJEVIM\n");
+				ffs_remove_chunk(mpool, before);
+				before->size += chunk->size; /* join */
+				chunk = before;
+			}
+			else{
+				printf("NIJE SPOJENO S LIJEVIM\n");
+			}
+		}
+		else{printf("NIJE SPOJENO S LIJEVIM\n");}
 	}
 
 	/* join with right? */
 	after = GET_AFTER(chunk);
 	if (CHECK_FREE(after))
 	{
-		ffs_remove_chunk(mpool, after);
-		chunk->size += after->size; /* join */
+		if (after->size <= 1024 && chunk->size <= 1024)
+		{
+			if (chunk->size + after->size <= 1024)
+			{
+				printf("SPOJENO S DESNIM\n");
+				ffs_remove_chunk(mpool, after);
+				chunk->size += after->size; /* join */
+			}
+			else{printf("NIJE SPOJENO S DESNIM\n");}
+		}
+		else{
+			printf("NIJE SPOJENO S DESNIM\n");
+		}
 	}
 
 	/* insert chunk in free list */

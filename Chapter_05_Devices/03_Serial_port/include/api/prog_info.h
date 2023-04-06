@@ -5,11 +5,14 @@
 
 /* "programs" */
 int hello_world();
+void demo();
 int timer();
 int keyboard();
 int segm_fault();
 
+
 #define	hello_world_PROG_HELP	"Print 'Hello world'."
+#define	demo_PROG_HELP	"demo"
 #define	timer_PROG_HELP		"Timer interface demonstration: "	\
 				"periodic timer activations."
 #define	keyboard_PROG_HELP	"Print ASCII code for each keystroke. "	\

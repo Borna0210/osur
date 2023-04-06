@@ -20,6 +20,7 @@ void *ffs_init(void *mem_segm, size_t size);
 void *ffs_alloc(ffs_mpool_t *mpool, size_t size);
 int ffs_free(ffs_mpool_t *mpool, void *chunk_to_be_freed);
 
+
 /*! rest is only for first_fit.c */
 #else /* _FF_SIMPLE_C_ */
 
@@ -61,6 +62,7 @@ ffs_mpool_t;
 #define GET_SIZE(HDR)	((HDR)->size & ~1)
 
 #define GET_AFTER(HDR)	(((void *)(HDR)) +  GET_SIZE(HDR))
+#define GET_BEFORE(HDR)	(((void *)(HDR)) -  GET_SIZE(HDR))
 #define GET_TAIL(HDR)	(GET_AFTER(HDR) - sizeof(ffs_tail_t))
 #define GET_HDR(TAIL)	(((void *)(TAIL)) - GET_SIZE(TAIL) + sizeof(ffs_tail_t))
 
@@ -77,6 +79,7 @@ ffs_mpool_t;
 void *ffs_init(void *mem_segm, size_t size);
 void *ffs_alloc(ffs_mpool_t *mpool, size_t size);
 int ffs_free(ffs_mpool_t *mpool, void *chunk_to_be_freed);
+ffs_hdr_t *ffs_merge_blocks(ffs_hdr_t *prev_block, ffs_hdr_t *block);
 
 static void ffs_remove_chunk(ffs_mpool_t *mpool, ffs_hdr_t *chunk);
 static void ffs_insert_chunk(ffs_mpool_t *mpool, ffs_hdr_t *chunk);
