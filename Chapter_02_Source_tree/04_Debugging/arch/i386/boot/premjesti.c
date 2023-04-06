@@ -2,41 +2,35 @@
 #include <lib/string.h>
 #include <api/stdio.h>
 
-
 void premjesti_helper()
 {
-	extern char size_data;
-	extern size_t size_i, size_r;
-	size_t size_d = (size_t) &size_data;
-	size_t i;
-	char *od = (char *) 0x40000;
-	char *kamo = (char *) 0x400000;
 
-	//for ( i = 0; i< size_d; i++ )
-	//	kamo[i] = od[i];
+	extern unsigned int kernel_code_addr;
+	extern unsigned int kernel_end_addr;
+	extern unsigned int kernel_data_addr;
 
-	for ( i = 0; i< size_d; i++ )
-		*kamo++ = *od++;
 
-	od = (char *) 0x20000;
-	kamo = (char *) 0x200000;
-	size_d = (size_t) &size_i;
+	unsigned int kernel_size = (unsigned int)&kernel_data_addr - (unsigned int)&kernel_code_addr;
+	unsigned int data_size = (unsigned int)&kernel_end_addr - (unsigned int)&kernel_data_addr;
 
-	for ( i = 0; i< size_d; i++ )
-		*kamo++ = *od++;
-    
-    od = (char *) 0x30000;
-	kamo = (char *) 0x300000;
-	size_d = (size_t) &size_r;
+	unsigned int *src = (unsigned int *)0x100000;
+	unsigned int *dst = (unsigned int *)0x200000;
 
-	for ( i = 0; i< size_d; i++ )
-		*kamo++ = *od++;
+	for (unsigned int i = 0; i < kernel_size; i++)
+	{
+		dst[i] = src[i];
+	}
 
-    unsigned int new_stack_top = 0x800000 - STACK_SIZE;
-    asm volatile("mov %0, %%esp" ::"r"(new_stack_top));
+	unsigned int *src2 = (unsigned int *)0x102000;
+	unsigned int *dst2 = (unsigned int *)0x300000;
+
+	for (unsigned int i = 0; i < data_size; i++)
+	{
+		dst2[i] = src2[i];
+	}
 }
 
 void premjesti()
 {
-    premjesti_helper();
+	premjesti_helper();
 }
