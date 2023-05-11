@@ -3,6 +3,7 @@
 #include <api/stdio.h>
 
 #include <kernel/device.h>
+#include <kernel/fs.h>
 #include <api/errno.h>
 #include <lib/string.h>
 
@@ -56,6 +57,12 @@ int open(char *pathname, int flags, mode_t mode)
 	std_desc[i].ptr = desc.ptr;
 
 	return i;
+}
+
+int rename(char *pathname, char *newname)
+{
+	k_fs_rename_file(pathname, newname);
+	return 0;
 }
 
 /*! Close an descriptor */

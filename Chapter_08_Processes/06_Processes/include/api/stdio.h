@@ -4,6 +4,7 @@
 #include <types/io.h>
 
 int open(char *pathname, int flags, mode_t mode);
+int rename(char *pathname, char *newname);
 int close(int fd);
 ssize_t read(int fd, void *buffer, size_t count);
 ssize_t write(int fd, void *buffer, size_t count);

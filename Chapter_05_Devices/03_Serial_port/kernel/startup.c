@@ -66,7 +66,7 @@ void k_startup()
 	retval = close(fd);
 	kprintf("retval=%d\n", retval);
 
-	k_fs_rename_file("file:test", "file:pest");
+	rename("file:test", "file:pest");
 
 	kprintf("\nDokaz da se datoteka sad zove pest\n");
 
