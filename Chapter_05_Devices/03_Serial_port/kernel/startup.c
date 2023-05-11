@@ -66,12 +66,26 @@ void k_startup()
 	retval = close(fd);
 	kprintf("retval=%d\n", retval);
 
-	fd = open("file:test", O_RDONLY, 0);
+	k_fs_rename_file("file:test", "file:pest");
+
+	kprintf("\nDokaz da se datoteka sad zove pest\n");
+
+
+	fd = open("file:pest", O_RDONLY, 0);
 	kprintf("fd=%d\n", fd);
 	char buff[11];
 	retval = read(fd, buff, 11);
 	kprintf("retval=%d\n", retval);
 	kprintf("buff=%s\n", buff);
+
+	kprintf("\nDokaz da test više ne postoji\n");
+
+	fd = open("file:test", O_RDONLY, 0);
+	kprintf("fd=%d\n", fd);
+	char buff2[11];
+	retval = read(fd, buff2, 11);
+	kprintf("retval=%d\n", retval);
+	kprintf("buff=%s\n", buff2);
 
 
 	/* start desired program(s) */
