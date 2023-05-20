@@ -25,8 +25,6 @@ static timespec_t threshold;
 static ktimer_t *sleep_timer;
 volatile static int sleep_retval, wake_up;
 
-timespec_t myclock;
-
 
 /*! Initialize time management subsystem */
 int k_time_init()
@@ -70,7 +68,7 @@ int kclock_gettime(clockid_t clockid, timespec_t *time)
  */
 int kclock_settime(clockid_t clockid, timespec_t *time)
 {
-	ASSERT(time && (clockid==CLOCK_REALTIME));
+	ASSERT(time && (clockid==CLOCK_REALTIME || clockid==CLOCK_MONOTONIC));
 
 	arch_set_time(time);
 
