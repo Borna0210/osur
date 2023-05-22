@@ -25,6 +25,7 @@ static timespec_t threshold;
 static ktimer_t *sleep_timer;
 volatile static int sleep_retval, wake_up;
 
+int ch = 0;
 
 /*! Initialize time management subsystem */
 int k_time_init()
@@ -54,9 +55,9 @@ int k_time_init()
  */
 int kclock_gettime(clockid_t clockid, timespec_t *time)
 {
-	ASSERT(time && (clockid==CLOCK_REALTIME || clockid==CLOCK_MONOTONIC));
+	ASSERT(time && (clockid == CLOCK_REALTIME || clockid == CLOCK_MONOTONIC));
 
-	arch_get_time(time);
+	arch_get_time(clockid, time);
 
 	return EXIT_SUCCESS;
 }
@@ -68,9 +69,9 @@ int kclock_gettime(clockid_t clockid, timespec_t *time)
  */
 int kclock_settime(clockid_t clockid, timespec_t *time)
 {
-	ASSERT(time && (clockid==CLOCK_REALTIME || clockid==CLOCK_MONOTONIC));
+	ASSERT(time && (clockid == CLOCK_REALTIME));
 
-	arch_set_time(time);
+	arch_set_time(clockid, time);
 
 	return EXIT_SUCCESS;
 }
@@ -114,7 +115,7 @@ void kclock_interrupt_sleep(void *source)
 	if (remain)
 	{
 		/* save remaining time */
-		retval = kclock_gettime(CLOCK_REALTIME, &now);
+		retval = kclock_gettime(CLOCK_MONOTONIC, &now);
 		retval += ktimer_gettime(sleep_timer, &irem);
 		ASSERT(retval == EXIT_SUCCESS);
 		*remain = irem.it_value;
@@ -186,7 +187,7 @@ int ktimer_delete(ktimer_t *ktimer)
 	if (!k_check_id(ktimer->id))
 	{
 		/* FIXME Maybe this should not happen! */
-		//LOG(DEBUG, "Bug possibly!");
+		// LOG(DEBUG, "Bug possibly!");
 		return ENOENT;
 	}
 
@@ -212,13 +213,13 @@ int ktimer_delete(ktimer_t *ktimer)
  * \return status	0 for success
  */
 int ktimer_settime(ktimer_t *ktimer, int flags, itimerspec_t *value,
-		     itimerspec_t *ovalue)
+				   itimerspec_t *ovalue)
 {
 	timespec_t now;
 
 	ASSERT(ktimer);
 
-	kclock_gettime(ktimer->clockid, &now);
+	kclock_gettime(CLOCK_MONOTONIC, &now);
 
 	if (ovalue)
 	{
@@ -245,7 +246,7 @@ int ktimer_settime(ktimer_t *ktimer, int flags, itimerspec_t *value,
 
 		list_sort_add(&ktimers, ktimer, &ktimer->list, ktimer_cmp);
 	}
-
+	ch = 1;
 	ktimer_schedule();
 
 	return EXIT_SUCCESS;
@@ -273,7 +274,6 @@ int ktimer_gettime(ktimer_t *ktimer, itimerspec_t *value)
 	return EXIT_SUCCESS;
 }
 
-/*! Activate timers */
 static void ktimer_schedule()
 {
 	ktimer_t *first, *next;
@@ -282,7 +282,7 @@ static void ktimer_schedule()
 	if (!sys__feature(FEATURE_TIMERS, FEATURE_GET, 0))
 		return;
 
-	kclock_gettime(CLOCK_REALTIME, &time);
+	kclock_gettime(CLOCK_MONOTONIC, &time);
 	/* should have separate "scheduler" for each clock */
 
 	ref_time = time;
@@ -296,6 +296,22 @@ static void ktimer_schedule()
 		/* timers have absolute values in 'it_value' */
 		if (time_cmp(&first->itimer.it_value, &ref_time) <= 0)
 		{
+			if (ch == 1)
+			{
+				ch = 0;
+				if (first->clockid == CLOCK_REALTIME)
+				{
+					timespec_t temp_mon, temp_real;
+					kclock_gettime(CLOCK_MONOTONIC, &temp_mon);
+					kclock_gettime(CLOCK_REALTIME, &temp_real);
+
+					if (time_cmp(&temp_mon, &temp_real) > 0)
+					{
+						time_sub(&temp_mon, &temp_real);
+						time_add(&first->itimer.it_value, &temp_mon);
+					}
+				}
+			}
 			/* 'activate' timer */
 
 			/* but first remove timer from list */
@@ -306,12 +322,13 @@ static void ktimer_schedule()
 			{
 				/* calculate next activation time */
 				time_add(&first->itimer.it_value,
-					   &first->itimer.it_interval);
+						 &first->itimer.it_interval);
 				/* put back into list */
 				list_sort_add(&ktimers, first,
-						&first->list, ktimer_cmp);
+							  &first->list, ktimer_cmp);
 			}
-			else {
+			else
+			{
 				TIMER_DISARM(first);
 			}
 
@@ -333,13 +350,14 @@ static void ktimer_schedule()
 			ktimer_process_event(&first->evp);
 
 			/* processing may take some time! refresh "time" */
-			kclock_gettime(CLOCK_REALTIME, &time);
+			kclock_gettime(CLOCK_MONOTONIC, &time);
 			ref_time = time;
 			time_add(&ref_time, &threshold);
 
 			first = list_get(&ktimers, FIRST);
 		}
-		else {
+		else
+		{
 			first = list_get(&ktimers, FIRST);
 			if (first)
 			{
@@ -360,10 +378,10 @@ int ktimer_process_event(sigevent_t *evp)
 
 	ASSERT(evp);
 
-	switch(evp->sigev_notify)
+	switch (evp->sigev_notify)
 	{
-	case SIGEV_WAKE_THREAD:	/* for *sleep */
-	case SIGEV_THREAD:	/* no threads yet, just call given function */
+	case SIGEV_WAKE_THREAD: /* for *sleep */
+	case SIGEV_THREAD:		/* no threads yet, just call given function */
 		func = evp->sigev_notify_function;
 		func(evp->sigev_value);
 		break;
@@ -385,7 +403,6 @@ int ktimer_process_event(sigevent_t *evp)
 	return retval;
 }
 
-
 /*! Interface to programs --------------------------------------------------- */
 
 /*!
@@ -401,9 +418,8 @@ int sys__clock_gettime(clockid_t clockid, timespec_t *time)
 	SYS_ENTRY();
 
 	ASSERT_ERRNO_AND_EXIT(
-		time && (clockid==CLOCK_REALTIME || clockid==CLOCK_MONOTONIC),
-		EINVAL
-	);
+		time && (clockid == CLOCK_REALTIME || clockid == CLOCK_MONOTONIC),
+		EINVAL);
 
 	retval = kclock_gettime(clockid, time);
 
@@ -423,15 +439,13 @@ int sys__clock_settime(clockid_t clockid, timespec_t *time)
 	SYS_ENTRY();
 
 	ASSERT_ERRNO_AND_EXIT(
-		time && (clockid==CLOCK_REALTIME || clockid==CLOCK_MONOTONIC),
-		EINVAL
-	);
+		time && (clockid == CLOCK_REALTIME),
+		EINVAL);
 
 	retval = kclock_settime(clockid, time);
 
 	SYS_EXIT(retval, retval);
 }
-
 
 /*!
  * Suspend program until given time elapses
@@ -442,7 +456,7 @@ int sys__clock_settime(clockid_t clockid, timespec_t *time)
  * \return status
  */
 int sys__clock_nanosleep(clockid_t clockid, int flags,
-			   timespec_t *request, timespec_t *remain)
+						 timespec_t *request, timespec_t *remain)
 {
 	int retval;
 	sigevent_t evp;
@@ -451,10 +465,9 @@ int sys__clock_nanosleep(clockid_t clockid, int flags,
 	SYS_ENTRY();
 
 	ASSERT_ERRNO_AND_EXIT(
-	   (clockid==CLOCK_REALTIME || clockid==CLOCK_MONOTONIC) &&
-	    request && TIME_IS_SET(request),
-	    EINVAL
-	);
+		(clockid == CLOCK_REALTIME || clockid == CLOCK_MONOTONIC) &&
+			request && TIME_IS_SET(request),
+		EINVAL);
 
 	/* Timers are used for "sleep" operations through steps 1-4 */
 
@@ -480,12 +493,12 @@ int sys__clock_nanosleep(clockid_t clockid, int flags,
 	sleep_retval = EXIT_SUCCESS;
 	wake_up = FALSE;
 
-	do {
+	do
+	{
 		enable_interrupts();
-		suspend();		/* suspend till next interrupt */
+		suspend(); /* suspend till next interrupt */
 		disable_interrupts();
-	}
-	while (wake_up == FALSE);
+	} while (wake_up == FALSE);
 
 	SYS_EXIT(get_errno(), sleep_retval);
 }
@@ -506,7 +519,7 @@ int sys__timer_create(clockid_t clockid, sigevent_t *evp, timer_t *timerid)
 	SYS_ENTRY();
 
 	ASSERT_ERRNO_AND_EXIT(
-	clockid == CLOCK_REALTIME || clockid == CLOCK_MONOTONIC, EINVAL);
+		clockid == CLOCK_REALTIME || clockid == CLOCK_MONOTONIC, EINVAL);
 	ASSERT_ERRNO_AND_EXIT(evp && timerid, EINVAL);
 
 	retval = ktimer_create(clockid, evp, &ktimer);
@@ -538,7 +551,7 @@ int sys__timer_delete(timer_t *timerid)
 	kobj = timerid->ptr;
 	ASSERT_ERRNO_AND_EXIT(kobj, EINVAL);
 	ASSERT_ERRNO_AND_EXIT(list_find(&kobjects, &kobj->list),
-				EINVAL);
+						  EINVAL);
 
 	ktimer = kobj->kobject;
 	ASSERT_ERRNO_AND_EXIT(ktimer && ktimer->id == timerid->id, EINVAL);
@@ -559,7 +572,7 @@ int sys__timer_delete(timer_t *timerid)
  * \return status	0 for success
  */
 int sys__timer_settime(timer_t *timerid, int flags,
-			 itimerspec_t *value, itimerspec_t *ovalue)
+					   itimerspec_t *value, itimerspec_t *ovalue)
 {
 	ktimer_t *ktimer;
 	int retval;
@@ -571,7 +584,7 @@ int sys__timer_settime(timer_t *timerid, int flags,
 	kobj = timerid->ptr;
 	ASSERT_ERRNO_AND_EXIT(kobj, EINVAL);
 	ASSERT_ERRNO_AND_EXIT(list_find(&kobjects, &kobj->list),
-				EINVAL);
+						  EINVAL);
 
 	ktimer = kobj->kobject;
 	ASSERT_ERRNO_AND_EXIT(ktimer && ktimer->id == timerid->id, EINVAL);
@@ -599,7 +612,7 @@ int sys__timer_gettime(timer_t *timerid, itimerspec_t *value)
 	kobj = timerid->ptr;
 	ASSERT_ERRNO_AND_EXIT(kobj, EINVAL);
 	ASSERT_ERRNO_AND_EXIT(list_find(&kobjects, &kobj->list),
-				EINVAL);
+						  EINVAL);
 
 	ktimer = kobj->kobject;
 	ASSERT_ERRNO_AND_EXIT(ktimer && ktimer->id == timerid->id, EINVAL);

@@ -8,6 +8,7 @@ extern arch_timer_t TIMER;
 static arch_timer_t *timer = &TIMER;
 
 static timespec_t clock;	/* system time starting from 0:00 at power on */
+static timespec_t clock_monotonic;
 static timespec_t delay;	/* delay set by kernel, or timer->max_count */
 static timespec_t last_load;/* last time equivalent loaded to counter */
 
@@ -30,6 +31,7 @@ void arch_get_min_interval(timespec_t *time)
 void arch_timer_init()
 {
 	clock.tv_sec = clock.tv_nsec = 0;
+	clock_monotonic.tv_sec = clock_monotonic.tv_nsec = 0;
 	alarm_handler = NULL;
 
 	timer->init();
@@ -60,6 +62,7 @@ void arch_timer_set(timespec_t *time, void *alarm_func)
 	timer->get_interval_remainder(&remainder);
 	time_sub(&last_load, &remainder);
 	time_add(&clock, &last_load);
+	time_add(&clock_monotonic, &last_load);
 
 	delay = *time;
 	if (time_cmp(&delay, &timer->min_interval) < 0)
@@ -79,7 +82,7 @@ void arch_timer_set(timespec_t *time, void *alarm_func)
  * Get 'current' system time
  * \param time Store address for current time
  */
-void arch_get_time(timespec_t *time)
+void arch_get_time(clockid_t id,timespec_t *time)
 {
 	timespec_t remainder;
 
@@ -87,7 +90,12 @@ void arch_get_time(timespec_t *time)
 
 	*time = last_load;
 	time_sub(time, &remainder);
-	time_add(time, &clock);
+
+	if(id==CLOCK_REALTIME){
+		time_add(time, &clock);}
+	else if(id==CLOCK_MONOTONIC){
+		time_add(time, &clock_monotonic);
+	}
 }
 
 /*!
@@ -95,11 +103,14 @@ void arch_get_time(timespec_t *time)
  * \param time Time to set as current
  * NOTE: changing clock may have unpredicted behavior on timers!
  */
-void arch_set_time(timespec_t *time)
+void arch_set_time(clockid_t id, timespec_t *time)
 {
 	void (*k_handler)();
 
-	clock = *time;
+	if(id==CLOCK_REALTIME){
+		clock=*time;
+	}
+	
 	last_load = timer->max_interval;
 	timer->set_interval(&last_load);
 
@@ -121,6 +132,7 @@ static void arch_timer_handler()
 	void (*k_handler)();
 
 	time_add(&clock, &last_load);
+	time_add(&clock_monotonic, &last_load);
 
 	if (alarm_handler)
 	{

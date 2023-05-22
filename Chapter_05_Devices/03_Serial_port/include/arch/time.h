@@ -19,14 +19,14 @@ void arch_timer_set(timespec_t *time, void *alarm_func);
  * Get 'current' system time
  * \param time Store address for current time
  */
-void arch_get_time(timespec_t *time);
+void arch_get_time(clockid_t id,timespec_t *time);
 
 /*!
  * Set 'current' system time
  * \param time Time to set as current
  * NOTE: changing clock may have unpredicted behavior on timers!
  */
-void arch_set_time(timespec_t *time);
+void arch_set_time(clockid_t id,timespec_t *time);
 
 /*! Get minimal timer interval supported by hardware timer */
 void arch_get_min_interval(timespec_t *time);

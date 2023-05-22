@@ -57,7 +57,7 @@ void k_startup()
 
 	/* start desired program(s) */
 	hello_world();
-	keyboard();
+	//keyboard();
 	timer();
 	/* segm_fault(); */
 
